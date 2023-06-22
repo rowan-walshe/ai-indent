@@ -278,10 +278,11 @@ del y
 
 def create_model():
     model = tf.keras.models.Sequential()
-    model.add(tf.keras.layers.Embedding(enc.n_vocab, 64, input_length=250))
+    model.add(tf.keras.layers.Embedding(enc.n_vocab, 32, input_length=250))
     model.add(tf.keras.layers.LSTM(64, return_sequences=True))
-    model.add(tf.keras.layers.LSTM(64))
-    model.add(tf.keras.layers.Dense(64, activation="relu"))
+    model.add(tf.keras.layers.LSTM(32, return_sequences=True))
+    model.add(tf.keras.layers.LSTM(16))
+    model.add(tf.keras.layers.Dense(32, activation="relu"))
     model.add(tf.keras.layers.Flatten())
     model.add(tf.keras.layers.Dense(120, input_shape=(250,), activation="softmax"))
     adam = tf.keras.optimizers.Adam(learning_rate=0.0003)
@@ -291,6 +292,6 @@ def create_model():
 model = create_model()
 model.summary()
 
-checkpoint_path = "checkpoints/indentation_prediction_v2_100_epoch.ckpt"
+checkpoint_path = "checkpoints/indentation_prediction_v3_100_epoch.ckpt"
 callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path, save_weights_only=True, verbose=0)
 model.fit(X_train, y_train, epochs=1000, batch_size=32, verbose=1, validation_data=(X_val, y_val), callbacks=[callback])
