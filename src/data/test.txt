@@ -1,0 +1,12 @@
+package body System.Text_IO is
+
+   ---------
+   -- Get --
+   ---------
+
+   function Get return Character is
+      Ret : constant Character :=
+        Character'Val (UART0_Periph.RXD.RXD and 16#FF#);
+        Ada.Text_IO.Put ("Some text");
+        Ada.Text_IO.Put ("Some ""xt");
+   begin
