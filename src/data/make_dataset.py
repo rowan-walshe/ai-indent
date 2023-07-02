@@ -7,13 +7,15 @@ import shutil
 from pathlib import Path
 from typing import Generator, List, Optional, Tuple
 
-import numpy as np
-import tensorflow as tf
+import libadalang as lal
 
-# Set a fixed seed for reproducibility, for the random module, numpy, and tensorflow
-random.seed(42)
-np.random.seed(42)
-tf.random.set_seed(42)
+# import numpy as np
+# import tensorflow as tf
+
+# # Set a fixed seed for reproducibility, for the random module, numpy, and tensorflow
+# random.seed(42)
+# np.random.seed(42)
+# tf.random.set_seed(42)
 
 PROJECT_ROOT = Path(__file__).parent.absolute().parent.parent
 DATA_DIR = PROJECT_ROOT / 'data'
@@ -129,36 +131,43 @@ GENERIC_BLOCK_START = re.compile(r'^\s*generic($|\s+[^;]*$)')
 GENERIC_BLOCK_END = re.compile(r'(^|;)[^\S\r\n]*(function|procedure|package)($|\s+.*)')
 
 
-def split_file_into_clode_blocks(file_path: str) -> Generator[str, None, None]:
+def split_file_into_clode_blocks(file_path: Path) -> Generator[str, None, None]:
     # Read a file and return the contents as a string
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(str(file_path), "r", encoding="utf-8") as f:
         lines = f.readlines()
+    
+    # Remove lines which are just whitespace
+    lines = list(filter(lambda line: len(line.strip()) > 0, lines))
 
-    # Split the List of strings into a List of List of Strings
-    # Each inner List is delimited by a line that matches the regex UNINDENT_LINES
-    # This is used to split the file into predictable blocks of code
-    block = []
-    generic_block = False
-    for line in lines:
-        if len(line.strip()) == 0:
-            continue
+    context = lal.AnalysisContext()
+    context.get_from_buffer(file_path.name, ''.join(lines))
+    print(context)
 
-        if not generic_block and GENERIC_BLOCK_START.match(line):
-            generic_block = True
-        if generic_block and GENERIC_BLOCK_END.match(line):
-            generic_block = False
-            if len(block) > 0:
-                yield ''.join(block)
-                block = []
+    # # Split the List of strings into a List of List of Strings
+    # # Each inner List is delimited by a line that matches the regex UNINDENT_LINES
+    # # This is used to split the file into predictable blocks of code
+    # block = []
+    # generic_block = False
+    # for line in lines:
+    #     if len(line.strip()) == 0:
+    #         continue
 
-        if UNINDENT_LINES.match(line):
-            if len(block) > 0:
-                yield ''.join(block)
-                block = []
-        else:
-            block.append(line)
-    if len(block) > 0:
-        yield ''.join(block)
+    #     if not generic_block and GENERIC_BLOCK_START.match(line):
+    #         generic_block = True
+    #     if generic_block and GENERIC_BLOCK_END.match(line):
+    #         generic_block = False
+    #         if len(block) > 0:
+    #             yield ''.join(block)
+    #             block = []
+
+    #     if UNINDENT_LINES.match(line):
+    #         if len(block) > 0:
+    #             yield ''.join(block)
+    #             block = []
+    #     else:
+    #         block.append(line)
+    # if len(block) > 0:
+    #     yield ''.join(block)
 
 
 def trainable_file_in_dir(dir: Path) -> Generator[Path, None, None]:
@@ -177,12 +186,14 @@ def create_code_blocks():
         remove_visible_files(tgt_dir)
         block_count = 0
         for file in trainable_file_in_dir(src_dir):
-            for block in split_file_into_clode_blocks(str(file)):
+            for block in split_file_into_clode_blocks(file):
                 with open(str(tgt_dir / f"{block_count}_{file.name}"), "w", encoding="utf-8") as f:
                     f.write(block)
                 block_count += 1
+            break
     
 
 if __name__ == "__main__":
-    seperate_files()
-    create_code_blocks()
+    # seperate_files()
+    # create_code_blocks()
+    split_file_into_clode_blocks(Path("/workspaces/ai-indent/data/interim/complete_files/ada/119_bodies.ada"))
