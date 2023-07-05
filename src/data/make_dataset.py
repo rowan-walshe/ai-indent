@@ -125,49 +125,51 @@ def seperate_files():
         copy_file_to_dir(file, WEIRD_DIR, i)
 
 
+def is_unpredictable(token: lal.Token, node: lal.AdaNode) -> bool:
+    if token.kind in {'End', 'Begin'}:
+        return True
+    if token.kind in {'Elsif','Else'}:
+        return node.kind_name != 'IfExpr'
+    if token.kind == 'When':
+        return node.kind_name != 'CaseExprAlternative'
+    if token.kind == 'Package':
+        return node.kind_name.startswith('Generic')
+    if token.kind in {'Function', 'Procedure'}:
+        return node.parent.parent.kind_name.startswith('Generic')
+    return False
 
-UNINDENT_LINES = re.compile(r'^\s*(begin\s*$|end(;|\s+\S+))')
-GENERIC_BLOCK_START = re.compile(r'^\s*generic($|\s+[^;]*$)')
-GENERIC_BLOCK_END = re.compile(r'(^|;)[^\S\r\n]*(function|procedure|package)($|\s+.*)')
+
+def get_unpredictable_line_numbers(root: lal.AdaNode, lines: List[str], unit) -> List[int]:
+    result = []
+    for i, line in enumerate(lines):
+        line_no = i + 1
+        loc = lal.Sloc(line_no, len(line) - len(line.lstrip()) + 1)
+        token = unit.lookup_token(loc)
+        node = root.lookup(loc)
+        if is_unpredictable(token, node):
+            result.append(line_no)
+    return result
 
 
-def split_file_into_clode_blocks(file_path: Path) -> Generator[str, None, None]:
-    # Read a file and return the contents as a string
+def create_blocks(file_path: Path) -> Generator[str, None, None]:
     with open(str(file_path), "r", encoding="utf-8") as f:
         lines = f.readlines()
-    
+
     # Remove lines which are just whitespace
     lines = list(filter(lambda line: len(line.strip()) > 0, lines))
-
     context = lal.AnalysisContext()
-    context.get_from_buffer(file_path.name, ''.join(lines))
-    print(context)
-
-    # # Split the List of strings into a List of List of Strings
-    # # Each inner List is delimited by a line that matches the regex UNINDENT_LINES
-    # # This is used to split the file into predictable blocks of code
-    # block = []
-    # generic_block = False
-    # for line in lines:
-    #     if len(line.strip()) == 0:
-    #         continue
-
-    #     if not generic_block and GENERIC_BLOCK_START.match(line):
-    #         generic_block = True
-    #     if generic_block and GENERIC_BLOCK_END.match(line):
-    #         generic_block = False
-    #         if len(block) > 0:
-    #             yield ''.join(block)
-    #             block = []
-
-    #     if UNINDENT_LINES.match(line):
-    #         if len(block) > 0:
-    #             yield ''.join(block)
-    #             block = []
-    #     else:
-    #         block.append(line)
-    # if len(block) > 0:
-    #     yield ''.join(block)
+    unit = context.get_from_buffer(file_path.name, ''.join(lines))
+    root = unit.root
+    unpredictable = get_unpredictable_line_numbers(root, lines, unit)
+    line_no = 1
+    for unpredictable_line_no in unpredictable:
+        block = lines[line_no-1:unpredictable_line_no-1]
+        if len(block) > 1:
+            yield ''.join(block)
+        line_no = unpredictable_line_no
+    block = lines[line_no-1:]
+    if len(block) > 1:
+        yield ''.join(block)
 
 
 def trainable_file_in_dir(dir: Path) -> Generator[Path, None, None]:
@@ -186,14 +188,12 @@ def create_code_blocks():
         remove_visible_files(tgt_dir)
         block_count = 0
         for file in trainable_file_in_dir(src_dir):
-            for block in split_file_into_clode_blocks(file):
+            for block in create_blocks(file):
                 with open(str(tgt_dir / f"{block_count}_{file.name}"), "w", encoding="utf-8") as f:
                     f.write(block)
                 block_count += 1
-            break
-    
+
 
 if __name__ == "__main__":
-    # seperate_files()
-    # create_code_blocks()
-    split_file_into_clode_blocks(Path("/workspaces/ai-indent/data/interim/complete_files/ada/119_bodies.ada"))
+    seperate_files()
+    create_code_blocks()
