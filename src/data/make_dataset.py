@@ -182,16 +182,26 @@ def trainable_file_in_dir(dir: Path) -> Generator[Path, None, None]:
 def create_code_blocks():
     # For every file in data/interim/complete_files, split the file's into
     # interesting code blocks and write them to data/interim/code_blocks
+    file_count = 0
+    for category in ['ads', 'adb', 'gpr', 'ada']:
+        src_dir = FILES_DIR / category
+        tgt_dir = CODE_BLOCKS_DIR / category
+        for file in trainable_file_in_dir(src_dir):
+            file_count += 1
+    i = 0
     for category in ['ads', 'adb', 'gpr', 'ada']:
         src_dir = FILES_DIR / category
         tgt_dir = CODE_BLOCKS_DIR / category
         remove_visible_files(tgt_dir)
         block_count = 0
         for file in trainable_file_in_dir(src_dir):
+            if i % 1000 == 0:
+                print(f"Processing file {i} of {file_count}")
             for block in create_blocks(file):
                 with open(str(tgt_dir / f"{block_count}_{file.name}"), "w", encoding="utf-8") as f:
                     f.write(block)
                 block_count += 1
+            i += 1
 
 
 if __name__ == "__main__":
