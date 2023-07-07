@@ -72,19 +72,14 @@ def create_sub_blocks(file: Path) -> Generator[Tuple[str, str, int], None, None]
 
 
 def parse_tfr_element(element):
-  #use the same structure as above; it's kinda an outline of the structure we now want to create
-  data = {
-      'block': tf.io.FixedLenFeature([], tf.string),
-      'label':tf.io.FixedLenFeature([], tf.string)
+    data = {
+        'block': tf.io.FixedLenFeature([], tf.string),
+        'label':tf.io.FixedLenFeature([], tf.string)
     }
-
-    
-  content = tf.io.parse_single_example(element, data)
-  
-  block = tf.io.parse_tensor(content['block'], out_type=tf.uint8)
-  label = tf.io.parse_tensor(content['label'], out_type=tf.float32)
-
-  return (block, label)
+    content = tf.io.parse_single_example(element, data)
+    block = tf.io.parse_tensor(content['block'], out_type=tf.uint8)
+    label = tf.io.parse_tensor(content['label'], out_type=tf.float32)
+    return (block, label)
 
 def create_dataset():
     file_count = 0
