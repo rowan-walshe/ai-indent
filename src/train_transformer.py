@@ -33,29 +33,33 @@ def read_tfrecord(element):
     label = tf.reshape(label, (256,))
     return (block, label)
 
-BATCH_SIZE = 32
+BATCH_SIZE = 256
 
 dataset = tf.data.TFRecordDataset(filenames=DATASET_FILES)
 dataset = dataset.map(read_tfrecord)
 dataset = dataset.shuffle(10000)
 dataset = dataset.batch(BATCH_SIZE)
 
-DATASET_SIZE = 87307
-# TODO: Fix this. This is hardcoded for now but shouldn't be
-dataset = dataset.apply(tf.data.experimental.assert_cardinality(DATASET_SIZE))
+# DATASET_SIZE = 8_904_448
+# # TODO: Fix this. This is hardcoded for now but shouldn't be
+# dataset = dataset.apply(tf.data.experimental.assert_cardinality(DATASET_SIZE))
 
-train_size = int(0.7 * DATASET_SIZE)
-val_size = int(0.15 * DATASET_SIZE)
-test_size = int(0.15 * DATASET_SIZE)
+# train_size = int(0.7 * DATASET_SIZE)
+# val_size = int(0.15 * DATASET_SIZE)
+# test_size = int(0.15 * DATASET_SIZE)
 
-train_dataset = dataset.take(train_size)
-test_dataset = dataset.skip(train_size)
-val_dataset = test_dataset.skip(val_size)
-test_dataset = test_dataset.take(test_size)
+# train_dataset = dataset.take(train_size)
+# test_dataset = dataset.skip(train_size)
+# val_dataset = test_dataset.skip(val_size)
+# test_dataset = test_dataset.take(test_size)
 
-train_dataset = train_dataset.apply(tf.data.experimental.assert_cardinality(train_size))
-val_dataset = val_dataset.apply(tf.data.experimental.assert_cardinality(val_size))
-test_dataset = test_dataset.apply(tf.data.experimental.assert_cardinality(test_size))
+# train_dataset = train_dataset.apply(tf.data.experimental.assert_cardinality(train_size))
+# val_dataset = val_dataset.apply(tf.data.experimental.assert_cardinality(val_size))
+# test_dataset = test_dataset.apply(tf.data.experimental.assert_cardinality(test_size))
+
+# train_dataset = train_dataset.batch(BATCH_SIZE)
+# val_dataset = val_dataset.batch(BATCH_SIZE)
+# test_dataset = test_dataset.batch(BATCH_SIZE)
 
 
 class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
@@ -102,15 +106,26 @@ for x, y in dataset.take(1):
 
 model.summary()
 
-# checkpoint_path = "checkpoints/indentation_prediction_v5.ckpt"
-# callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path, save_weights_only=True, verbose=0)
+checkpoint_path = "checkpoints/indentation_prediction_v5.ckpt"
+callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path, save_weights_only=True, verbose=0)
+
+
+print("Memory usage: ", tf.config.experimental.get_memory_info('GPU:0')['current'])
+
+class MemoryPrintingCallback(tf.keras.callbacks.Callback):
+    def on_epoch_end(self, epoch, logs=None):
+      gpu_dict = tf.config.experimental.get_memory_info('GPU:0')
+      tf.print('\n GPU memory details [current: {} gb, peak: {} gb]'.format(
+          float(gpu_dict['current']) / (1024 ** 3), 
+          float(gpu_dict['peak']) / (1024 ** 3)))
+
 
 # if os.path.exists(checkpoint_path + ".index"):
 #     print("Loading weights from checkpoint")
 #     model.load_weights(checkpoint_path)
 
-model.fit(train_dataset, batch_size=32, epochs=5, verbose=1, validation_data=val_dataset)
+model.fit(dataset, batch_size=BATCH_SIZE, epochs=25, verbose=1, callbacks=[MemoryPrintingCallback(), callback])
 
-loss, accuracy = model.evaluate(test_dataset, verbose=1)
-print("Loss :", loss)
-print("Accuracy :", accuracy)
+# loss, accuracy = model.evaluate(test_dataset, verbose=1)
+# print("Loss :", loss)
+# print("Accuracy :", accuracy)
