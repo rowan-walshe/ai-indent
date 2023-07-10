@@ -163,7 +163,8 @@ cython_debug/
 *.gpr
 *.ads
 *.adb
-/data/raw/*
-!/data/raw/.gitkeep
+/data/*
+!/data/**/.gitkeep
 /checkpoints/
 nohup.out
+/src/wandb/
