@@ -34,59 +34,56 @@ val_ds = val_ds.cache()
 test_ds = test_ds.batch(BATCH_SIZE)
 test_ds = test_ds.cache()
 
-sweep_configuration = {
-    'method': 'random',
-    'metric': {
-        'name': 'val_loss',
-        'goal': 'minimize',
-    },
-    'parameters': {
-        'epochs': {
-            'value': 5,
-        },
-        'batch_size': {
-            'value': BATCH_SIZE,
-        },
-        'num_layers': {
-            'min': 1,
-            'max': 4,
-        },
-        'd_model': {
-            'values': [32, 64, 128, 256],
-        },
-        'dff': {
-            'values': [128, 256, 512, 1024],
-        },
-        'num_heads': {
-            'values': [1, 2, 4, 8],
-        },
-        'dropout_rate': {
-            'min': 0.0,
-            'max': 0.2,
-            'distribution': 'uniform',
-        },
-        'warmup_steps': {
-            'min': 1,
-            'max': 10000,
-            'distribution': 'log_uniform_values',
-        },
-        'beta_1': {
-            'min': 0.8,
-            'max': 0.99,
-            'distribution': 'uniform',
-        },
-        'beta_2': {
-            'min': 0.8,
-            'max': 0.999,
-            'distribution': 'uniform',
-        },
-        'epsilon': {
-            'min': 1e-10,
-            'max': 1e-7,
-            'distribution': 'log_uniform_values',
-        },
-    }      
-}
+# sweep_configuration = {
+#     'method': 'random',
+#     'metric': {
+#         'name': 'val_loss',
+#         'goal': 'minimize',
+#     },
+#     'parameters': {
+#         'epochs': {
+#             'value': 20,
+#         },
+#         'batch_size': {
+#             'value': BATCH_SIZE,
+#         },
+#         'num_layers': {
+#             'value': 3,
+#         },
+#         'd_model': {
+#             'value': 64,
+#         },
+#         'dff': {
+#             'value': 256,
+#         },
+#         'num_heads': {
+#             'value': 4,
+#         },
+#         'dropout_rate': {
+#             'value': 0.05,
+#         },
+#         'warmup_steps': {
+#             'min': 100,
+#             'max': 1000,
+#             'distribution': 'log_uniform_values',
+#         },
+#         'beta_1': {
+#             'min': 0.9,
+#             'max': 0.98,
+#             'distribution': 'uniform',
+#         },
+#         'beta_2': {
+#             'min': 0.9,
+#             'max': 0.99,
+#             'distribution': 'uniform',
+#         },
+#         'epsilon': {
+#             'min': 1e-9,
+#             'max': 1e-8,
+#             'distribution': 'log_uniform_values',
+#         },
+#     }      
+# }
 
 def main():
     wandb.init(project='ai-indent')
@@ -107,5 +104,20 @@ def main():
     )
 
 if __name__ == '__main__':
-    sweep_id = wandb.sweep(sweep_configuration, project='ai-indent')
-    wandb.agent(sweep_id, function=main)
+    # sweep_id = wandb.sweep(sweep_configuration, project='ai-indent_transformer_half')
+    # wandb.agent(sweep_id, function=main)
+    train_transformer(
+        train_ds, 
+        val_ds,
+        epochs=1,
+        batch_size=BATCH_SIZE,
+        num_layers=2,
+        d_model=32,
+        dff=128,
+        num_heads=4,
+        dropout_rate=0.1,
+        warmup_steps=200,
+        beta_1=0.9,
+        beta_2=0.98,
+        epsilon=1e-9,
+    )

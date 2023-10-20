@@ -71,8 +71,10 @@ model.summary()
 #     model.load_weights(checkpoint_path)
 
 
-model.fit(dataset, batch_size=BATCH_SIZE, epochs=5, verbose=1, validation_split=0.2)
+model.fit(dataset, batch_size=BATCH_SIZE, epochs=1, verbose=1, validation_split=0.2)
 
-loss, accuracy = model.evaluate(dataset)
-print("Loss :", loss)
-print("Accuracy :", accuracy)
+tf.saved_model.save(model, 'models/hello_world')
+
+# loss, accuracy = model.evaluate(dataset)
+# print("Loss :", loss)
+# print("Accuracy :", accuracy)
