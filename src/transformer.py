@@ -85,7 +85,7 @@ def train_transformer(
 
     model.summary()
 
-    # model.fit(train_ds, batch_size=batch_size, epochs=epochs, validation_data=val_ds, verbose=1)
+    model.fit(train_ds, batch_size=batch_size, epochs=epochs, validation_data=val_ds, verbose=1)
     # model.fit(train_ds, batch_size=batch_size, epochs=epochs, validation_data=val_ds, verbose=1, callbacks=[WandbMetricsLogger()])
-    # model.save(model_path, include_optimizer=False)
+    model.save(model_path, include_optimizer=False)
     print(f"Model saved to: {model_path}")
