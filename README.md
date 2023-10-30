@@ -1,7 +1,30 @@
 ai-indent
 ==============================
 
-A short description of the project.
+## Version 1
+
+Version 1 of the model was the first version that I tried out in VSCode using the model to predict indentation of the next line, making use of the ontypeformatting call that's part of the LSP. This "worked", and was right a good percentage of the time, and was responsive (inference time took about 3ms, even running on CPU).
+
+Using this, two areas of potential improvement that we identified were:
+- No context after the cursor position. Context which could turn a blind guess into a certainty
+- Context gained after typing the next line could be used to re-predict the line with much better accuracy
+
+## Version 2
+
+#### Planned improvements/work
+1. Predict next line, and re-predict current line
+  - Only re-predict current line if the line has been modified (e.g. formatters which take into account git history)
+2. Give the model context before and after the cursor
+
+## Version 3
+
+#### Planned improvements/work
+
+1. Take into account the type and amount of indexation set in the IDE 
+   - This should also have a way of saying 'undefined indentation settings'
+   - It should also be able to identify files that have different styles, and so the IDE should be ignored
+2. To produce training data of mixed indentation styles (e.g. tabs vs spaces), I plan to make use of some Ada formatter...
+
 
 Project Organization
 ------------
