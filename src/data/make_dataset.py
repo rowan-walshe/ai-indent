@@ -1,28 +1,21 @@
 import hashlib
 import math
+import multiprocessing as mp
 import os
-import random
-import re
 import shutil
+from functools import partial
 from pathlib import Path
 from typing import Generator, List, Optional, Tuple
 
-import libadalang as lal
+from features.tokenizer import Tokenizer
 
-# import numpy as np
-# import tensorflow as tf
-
-# # Set a fixed seed for reproducibility, for the random module, numpy, and tensorflow
-# random.seed(42)
-# np.random.seed(42)
-# tf.random.set_seed(42)
 
 PROJECT_ROOT = Path(__file__).parent.absolute().parent.parent
 DATA_DIR = PROJECT_ROOT / 'data'
 RAW_DATA_DIR = DATA_DIR / 'raw'
 INTERIM_DATA_DIR = DATA_DIR / 'interim'
 FILES_DIR = INTERIM_DATA_DIR / 'complete_files'
-CODE_BLOCKS_DIR = INTERIM_DATA_DIR / 'code_blocks'
+TOKENIZED_FILES_DIR = INTERIM_DATA_DIR / 'tokenized_files'
 PROCESSED_DATA_DIR = DATA_DIR / 'processed'
 
 ADS_DIR = FILES_DIR / 'ads'
@@ -107,69 +100,36 @@ def copy_file_to_dir(file: str, dest_dir: Path, i: Optional[int] = None):
         shutil.copy(file, str(dest_dir / f"{i}_{file_name}"))
 
 
-def seperate_files():
+def copy_file_without_blank_lines(file: str, dest_dir: Path, i: Optional[int] = None):
+    # Copies files to a destination directory
+    file_name = os.path.basename(file)
+    if i is None:
+        dest_path = dest_dir / file_name
+    else:
+        dest_path = dest_dir / f"{i}_{file_name}"
+    with open(file, "r", encoding="utf-8") as f:
+        # Remove lines which are just whitespace
+        lines = list(filter(lambda line: len(line.strip()) > 0, f.readlines()))
+    with open(dest_path, "w+", encoding="utf-8") as f:
+        f.writelines(lines)
+
+
+def separate_files():
     for dir in [ADS_DIR, ADB_DIR, GPR_DIR, ADA_DIR, WEIRD_DIR]:
         remove_visible_files(dir)
     # Find any file that contains training data in data/raw and copy it to the structure under data/interim
     files_to_process, weird_files = get_files_to_process(str(RAW_DATA_DIR))
     for i, file in enumerate(files_to_process):
         if file.endswith(".ads"):
-            copy_file_to_dir(file, ADS_DIR, i)
+            copy_file_without_blank_lines(file, ADS_DIR, i)
         elif file.endswith(".adb"):
-            copy_file_to_dir(file, ADB_DIR, i)
+            copy_file_without_blank_lines(file, ADB_DIR, i)
         elif file.endswith(".gpr"):
-            copy_file_to_dir(file, GPR_DIR, i)
+            copy_file_without_blank_lines(file, GPR_DIR, i)
         elif file.endswith(".ada"):
-            copy_file_to_dir(file, ADA_DIR, i)
+            copy_file_without_blank_lines(file, ADA_DIR, i)
     for i, file in enumerate(weird_files):
         copy_file_to_dir(file, WEIRD_DIR, i)
-
-
-def is_unpredictable(token: lal.Token, node: lal.AdaNode) -> bool:
-    if token.kind in {'End', 'Begin'}:
-        return True
-    if token.kind in {'Elsif','Else'}:
-        return node.kind_name != 'IfExpr'
-    if token.kind == 'When':
-        return node.kind_name != 'CaseExprAlternative'
-    if token.kind == 'Package':
-        return node.kind_name.startswith('Generic')
-    if token.kind in {'Function', 'Procedure'}:
-        return node.parent.parent.kind_name.startswith('Generic')
-    return False
-
-
-def get_unpredictable_line_numbers(root: lal.AdaNode, lines: List[str], unit) -> List[int]:
-    result = []
-    for i, line in enumerate(lines):
-        line_no = i + 1
-        loc = lal.Sloc(line_no, len(line) - len(line.lstrip()) + 1)
-        token = unit.lookup_token(loc)
-        node = root.lookup(loc)
-        if is_unpredictable(token, node):
-            result.append(line_no)
-    return result
-
-
-def create_blocks(file_path: Path) -> Generator[str, None, None]:
-    with open(str(file_path), "r", encoding="utf-8") as f:
-        lines = f.readlines()
-
-    # Remove lines which are just whitespace
-    lines = list(filter(lambda line: len(line.strip()) > 0, lines))
-    context = lal.AnalysisContext()
-    unit = context.get_from_buffer(file_path.name, ''.join(lines))
-    root = unit.root
-    unpredictable = get_unpredictable_line_numbers(root, lines, unit)
-    line_no = 1
-    for unpredictable_line_no in unpredictable:
-        block = lines[line_no-1:unpredictable_line_no-1]
-        if len(block) > 1:
-            yield ''.join(block)
-        line_no = unpredictable_line_no
-    block = lines[line_no-1:]
-    if len(block) > 1:
-        yield ''.join(block)
 
 
 def trainable_file_in_dir(dir: Path) -> Generator[Path, None, None]:
@@ -179,31 +139,26 @@ def trainable_file_in_dir(dir: Path) -> Generator[Path, None, None]:
             yield file
 
 
-def create_code_blocks():
-    # For every file in data/interim/complete_files, split the file's into
-    # interesting code blocks and write them to data/interim/code_blocks
-    file_count = 0
-    for category in ['ads', 'adb', 'gpr', 'ada']:
-        src_dir = FILES_DIR / category
-        tgt_dir = CODE_BLOCKS_DIR / category
-        for file in trainable_file_in_dir(src_dir):
-            file_count += 1
-    i = 0
-    for category in ['ads', 'adb', 'gpr', 'ada']:
-        src_dir = FILES_DIR / category
-        tgt_dir = CODE_BLOCKS_DIR / category
-        remove_visible_files(tgt_dir)
-        block_count = 0
-        for file in trainable_file_in_dir(src_dir):
-            if i % 1000 == 0:
-                print(f"Processing file {i} of {file_count}")
-            for block in create_blocks(file):
-                with open(str(tgt_dir / f"{block_count}_{file.name}"), "w", encoding="utf-8") as f:
-                    f.write(block)
-                block_count += 1
-            i += 1
+def tokenize_file(tgt_dir: Path, file: Path, ):
+    with file.open('r', encoding="utf-8") as fr:
+        with (tgt_dir / file.name).open("wb") as fw:
+            for line in fr.readlines():
+                tokens = Tokenizer.encode(line)
+                fw.write(bytearray(tokens))
 
+def tokenize_files():
+    for category in ['ads', 'adb', 'gpr', 'ada']:
+        src_dir = FILES_DIR / category
+        tgt_dir = TOKENIZED_FILES_DIR / category
+        remove_visible_files(tgt_dir)
+
+        tokenize_file_with_dir = partial(tokenize_file, tgt_dir)
+
+        pool = mp.Pool(mp.cpu_count())
+        pool.map(tokenize_file_with_dir, trainable_file_in_dir(src_dir))
+        pool.close()
+        pool.join()
 
 if __name__ == "__main__":
-    seperate_files()
-    create_code_blocks()
+    separate_files()
+    tokenize_files()
