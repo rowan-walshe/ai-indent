@@ -16,7 +16,7 @@ PROCESSED_DATA_DIR = DATA_DIR / 'processed'
 TRAINABLE_FILE_TYPES = {".ads", ".adb", ".gpr", ".ada"}
 
 MAX_TOKENS = 256
-MAX_INDENTATION = 256
+MAX_INDENTATION = 128
 
 
 def count_leading_spaces(block):
