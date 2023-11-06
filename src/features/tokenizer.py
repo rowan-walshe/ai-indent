@@ -34,6 +34,14 @@ class Tokenizer:
         return cls._SPACE_TOKEN
 
     @classmethod
+    def pre_token(cls) -> int:
+        return cls._PRED1
+
+    @classmethod
+    def post_token(cls) -> int:
+        return cls._PRED2
+
+    @classmethod
     def _gen_uknown(cls, unknown_count: int) -> List[int]:
         return [cls._UKN1] * unknown_count
 

@@ -8,6 +8,7 @@ import wandb
 import numpy as np
 import tensorflow as tf
 
+from features.build_features import MAX_INDENTATION, MAX_TOKENS
 from features.tokenizer import Tokenizer
 from models.transformers import Transformer
 from transformer import train_transformer
@@ -21,9 +22,25 @@ PROJECT_ROOT = Path(__file__).parent.absolute().parent
 DATA_DIR = PROJECT_ROOT / 'data'
 PROCESSED_DATA_DIR = DATA_DIR / 'processed'
 
+FEATURES = {
+    'toks': tf.io.FixedLenFeature([], tf.string),
+    'pre': tf.io.FixedLenFeature([], tf.int64),
+    'post': tf.io.FixedLenFeature([], tf.int64)
+}
+def parse_tfr_element(element):
+    content = tf.io.parse_single_example(element, FEATURES)
+    tokens = tf.io.parse_tensor(content['toks'], tf.uint8)
+    tokens = tf.reshape(tokens, (MAX_TOKENS,))
+    label = tf.cast(tf.stack([content['pre'], content['post']]), tf.int8)
+    return (tokens, label)
+
 train_ds = tf.data.Dataset.load(str(Path(PROCESSED_DATA_DIR) / 'train_ds'))
 val_ds = tf.data.Dataset.load(str(Path(PROCESSED_DATA_DIR) / 'val_ds'))
 test_ds = tf.data.Dataset.load(str(Path(PROCESSED_DATA_DIR) / 'test_ds'))
+
+train_ds = train_ds.map(parse_tfr_element)
+val_ds = val_ds.map(parse_tfr_element)
+test_ds = test_ds.map(parse_tfr_element)
 
 BATCH_SIZE = 64
 
@@ -109,15 +126,15 @@ if __name__ == '__main__':
     train_transformer(
         train_ds, 
         val_ds,
-        epochs=20,
+        epochs=5,
         batch_size=BATCH_SIZE,
         num_layers=3,
         d_model=32,
         dff=128,
         num_heads=4,
-        dropout_rate=0.05,
+        dropout_rate=0.0005,
         warmup_steps=200,
-        beta_1=0.9,
-        beta_2=0.98,
+        beta_1=0.95,
+        beta_2=0.99,
         epsilon=1e-9,
     )

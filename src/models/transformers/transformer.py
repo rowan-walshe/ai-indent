@@ -112,23 +112,23 @@ class Encoder(tf.keras.layers.Layer):
 
 class Transformer(tf.keras.Model):
   def __init__(self, *, num_layers, d_model, num_heads, dff,
-               vocab_size, dropout_rate=0.1, max_indentation=120):
+               vocab_size, dropout_rate=0.1, max_indentation=128):
     super().__init__()
 
     self.encoder = Encoder(num_layers=num_layers, d_model=d_model,
                            num_heads=num_heads, dff=dff,
                            vocab_size=vocab_size,
                            dropout_rate=dropout_rate)
+    self.max_indentation = max_indentation
     
     self.flatten = tf.keras.layers.Flatten()
+    self.final_layer = tf.keras.layers.Dense(max_indentation * 2, activation='softmax')
+    self.reshape = tf.keras.layers.Reshape((2, max_indentation))
 
-    self.final_layer = tf.keras.layers.Dense(max_indentation, activation='softmax')
 
   def call(self, inputs):
-    context = self.encoder(inputs)  # (batch_size, context_len, d_model)
-
-    # Final linear layer output.
-    logits = self.final_layer(self.flatten(context))  # (batch_size, target_len, target_vocab_size)
+    context = self.encoder(inputs)
+    logits = self.reshape(self.final_layer(self.flatten(context)))
 
     try:
       # Drop the keras mask, so it doesn't scale the losses/metrics.

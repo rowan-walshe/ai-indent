@@ -19,21 +19,8 @@ PROCESSED_DATA_DIR = DATA_DIR / 'processed'
 DATASET_FILES = tf.io.gfile.glob(str(PROCESSED_DATA_DIR / '*.tfrecord'))
 
 
-def read_tfrecord(element):
-    data = {
-        'block': tf.io.FixedLenFeature([], tf.string),
-        'label':tf.io.FixedLenFeature([], tf.string)
-    }
-    content = tf.io.parse_single_example(element, data)
-    block = tf.io.parse_tensor(content['block'], out_type=tf.uint8)
-    label = tf.io.parse_tensor(content['label'], out_type=tf.float32)
-    block = tf.reshape(block, (256,))
-    label = tf.reshape(label, (256,))
-    return (block, label)
-
 def read_dataset(shuffle: bool = True) -> Tuple[tf.data.Dataset, int]:
     dataset = tf.data.TFRecordDataset(filenames=DATASET_FILES)
-    dataset = dataset.map(read_tfrecord)
     dataset_size = len(list(dataset))
     if shuffle:
         dataset = dataset.shuffle(10000)
