@@ -6,12 +6,18 @@
 		"context": "../..",
 		"dockerfile": "../Dockerfile"
 	},
+
+	"mounts": [
+		"source=projectname-bashhistory,target=/commandhistory,type=volume"
+	],
+
 	"customizations": {
 		"vscode": {
 			"extensions": [
 				"ms-toolsai.jupyter",
 				"ms-python.python"
-			]
+			],
+			"settings": {"terminal.integrated.defaultProfile.linux": "bash"}
 		}
 	}
 }

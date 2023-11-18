@@ -11,7 +11,12 @@
 		"--runtime",
 		"nvidia",
 		"--gpus",
-		"all"
+		"all",
+		"--privileged=true"
+	],
+
+	"mounts": [
+		"source=projectname-bashhistory,target=/commandhistory,type=volume"
 	],
 
 	"customizations": {
@@ -19,7 +24,8 @@
 			"extensions": [
 				"ms-toolsai.jupyter",
 				"ms-python.python"
-			]
+			],
+			"settings": {"terminal.integrated.defaultProfile.linux": "bash"}
 		}
 	}
 }
