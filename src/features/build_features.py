@@ -25,6 +25,11 @@ TRAINABLE_FILE_TYPES = {".ads", ".adb", ".gpr", ".ada"}
 MAX_TOKENS = 512
 MAX_INDENTATION = 128
 
+skipped = 0
+
+
+EXAMPLE_HASHES = {}
+
 
 def count_leading_spaces(block: List[int]) -> int:
     count = 0
@@ -91,6 +96,7 @@ def split_list(lst, val):
 
 
 def create_sub_blocks(file: Path) -> Generator[Tuple[List[int], int, int], None, None]:
+    global skipped
     with open(str(file), "rb") as f:
         tokens = list(f.read())
     lines = split_list(tokens, Tokenizer.newline_token())
@@ -98,6 +104,9 @@ def create_sub_blocks(file: Path) -> Generator[Tuple[List[int], int, int], None,
     for i in range(len(lines)-1):
         labelpre = count_leading_spaces(lines[i])
         labelpost = count_leading_spaces(lines[i+1])
+        if labelpre >= MAX_INDENTATION or labelpost >= MAX_INDENTATION:
+            skipped += 1
+            continue
         new_spaces = get_random_leading_spaces()
         core = [Tokenizer.pre_token(), *[Tokenizer.space_token()] * new_spaces, *lines[i][labelpre:], Tokenizer.post_token()]
         if len(core) > MAX_TOKENS:
@@ -126,21 +135,8 @@ def create_sub_blocks(file: Path) -> Generator[Tuple[List[int], int, int], None,
         yield core, labelpre, labelpost
 
 
-FEATURES = {
-    'toks': tf.io.FixedLenFeature([], tf.string),
-    'pre': tf.io.FixedLenFeature([], tf.int64),
-    'post': tf.io.FixedLenFeature([], tf.int64)
-}
-def parse_tfr_element(element):
-    content = tf.io.parse_single_example(element, FEATURES)
-    tokens = tf.io.parse_tensor(content['toks'], tf.uint8)
-    label_pre = tf.one_hot(content['pre'], MAX_INDENTATION)
-    label_post = tf.one_hot(content['post'], MAX_INDENTATION)
-    label = tf.stack([label_pre, label_post])
-    return (tokens, label)
-
-
 def create_dataset():
+    global skipped
     file_count = 0
     for category in ['ads', 'adb', 'gpr', 'ada']:
             src_dir = TOKENIZED_FILES_DIR / category
@@ -148,18 +144,34 @@ def create_dataset():
                 file_count += 1
     i = 0
     sub_block_count = 0
+    dup_count = 0
     with tf.io.TFRecordWriter(str(PROCESSED_DATA_DIR / 'dataset.tfrecord')) as writer:
         for category in ['ads', 'adb', 'gpr', 'ada']:
             src_dir = TOKENIZED_FILES_DIR / category
             for file in trainable_file_in_dir(src_dir):
-                if i % 1000 == 0:
+                if i % 5000 == 0:
                     print(f'Processed {i} files out of {file_count}')
+                    print(f'  Sub-block count:  {sub_block_count}')
+                    print(f'  Dupe-block count: {dup_count}')
+                    print(f'  Skip-block count: {skipped}')
                 i += 1
                 for tokens, label_pre, label_post in create_sub_blocks(file):
                     sub_block_count += 1
+                    tok_hash = hash(tuple(tokens))
+                    label = (label_pre, label_post)
+                    if tok_hash in EXAMPLE_HASHES:
+                        if label in EXAMPLE_HASHES[tok_hash]:
+                            dup_count += 1
+                            continue
+                        else:
+                            EXAMPLE_HASHES[tok_hash].add(label)
+                    else:
+                        EXAMPLE_HASHES[tok_hash] = {label}
                     example = create_example(tokens, label_pre, label_post)
                     writer.write(example.SerializeToString())
     print(f'Sub-block count: {sub_block_count}')
+    print(f'Dupe example count: {dup_count}')
+    print(f'  Skip-block count: {skipped}')
 
 
 if __name__ == "__main__":

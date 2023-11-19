@@ -28,4 +28,7 @@ git_repos = [
 
 if __name__ == "__main__":
     for repo in git_repos:
-        subprocess.run(["git", "clone", "--depth", "1", repo], cwd=RAW_DATA_DIR)
+        try:
+            subprocess.run(["git", "clone", "--depth", "1", repo], cwd=RAW_DATA_DIR)
+        except Exception as e:
+            print(f"Failed to clone '{repo}'. {e}")

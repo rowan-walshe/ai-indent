@@ -16,6 +16,7 @@ Using this, two areas of potential improvement that we identified were:
   - Only re-predict current line if the line has been modified (e.g. formatters which take into account git history)
 2. Give the model context before and after the cursor
 3. Remove lines that are just whitespace before performing inference
+4. Perform simple de-duplication on training data
 
 ## Version 3
 
@@ -25,6 +26,7 @@ Using this, two areas of potential improvement that we identified were:
    - This should also have a way of saying 'undefined indentation settings'
    - It should also be able to identify files that have different styles, and so the IDE should be ignored
 2. To produce training data of mixed indentation styles (e.g. tabs vs spaces), I plan to make use of some Ada formatter...
+4. Perform near de-duplication on training data: https://chenghaomou.github.io/posts/20230220150602
 
 
 ## Version X

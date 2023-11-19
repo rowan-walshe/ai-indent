@@ -31,7 +31,7 @@ def parse_tfr_element(element):
     content = tf.io.parse_single_example(element, FEATURES)
     tokens = tf.io.parse_tensor(content['toks'], tf.uint8)
     tokens = tf.reshape(tokens, (MAX_TOKENS,))
-    label = tf.cast(tf.stack([content['pre'], content['post']]), tf.int8)
+    label = tf.cast(tf.stack([content['pre'], content['post']]), tf.uint8)
     return (tokens, label)
 
 train_ds = tf.data.Dataset.load(str(Path(PROCESSED_DATA_DIR) / 'train_ds'))
@@ -132,9 +132,9 @@ if __name__ == '__main__':
         d_model=32,
         dff=128,
         num_heads=4,
-        dropout_rate=0.0005,
+        dropout_rate=0.05,
         warmup_steps=200,
-        beta_1=0.95,
-        beta_2=0.99,
+        beta_1=0.9,
+        beta_2=0.98,
         epsilon=1e-9,
     )
