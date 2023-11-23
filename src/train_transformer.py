@@ -29,9 +29,9 @@ FEATURES = {
 }
 def parse_tfr_element(element):
     content = tf.io.parse_single_example(element, FEATURES)
-    tokens = tf.io.parse_tensor(content['toks'], tf.uint8)
+    tokens = tf.io.parse_tensor(content['toks'], tf.uint16)
     tokens = tf.reshape(tokens, (MAX_TOKENS,))
-    label = tf.cast(tf.stack([content['pre'], content['post']]), tf.uint8)
+    label = tf.cast(tf.stack([content['pre'], content['post']]), tf.uint16)
     return (tokens, label)
 
 train_ds = tf.data.Dataset.load(str(Path(PROCESSED_DATA_DIR) / 'train_ds'))

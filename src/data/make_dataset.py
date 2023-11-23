@@ -144,7 +144,8 @@ def tokenize_file(tgt_dir: Path, file: Path, ):
         with (tgt_dir / file.name).open("wb") as fw:
             for line in fr.readlines():
                 tokens = Tokenizer.encode(line)
-                fw.write(bytearray(tokens))
+                for tok in tokens:
+                    fw.write(tok.to_bytes(2, 'little'))
 
 def tokenize_files():
     for category in ['ads', 'adb', 'gpr', 'ada']:

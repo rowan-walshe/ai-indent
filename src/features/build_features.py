@@ -22,22 +22,13 @@ PROCESSED_DATA_DIR = DATA_DIR / 'processed'
 
 TRAINABLE_FILE_TYPES = {".ads", ".adb", ".gpr", ".ada"}
 
-MAX_TOKENS = 512
+MAX_TOKENS = 256
 MAX_INDENTATION = 128
 
 skipped = 0
 
 
 EXAMPLE_HASHES = {}
-
-
-def count_leading_spaces(block: List[int]) -> int:
-    count = 0
-    for token in block:
-        if token != Tokenizer.space_token():
-            break
-        count += 1
-    return count
 
 
 # Probability distribution of ammount of spaces at start of line. Generated from input data
@@ -65,7 +56,7 @@ def _int64_feature(value):
 
 
 def create_example(tokens: List[int], label_pre: int, label_post: int):
-    tokens = np.array(tokens, dtype=np.uint8)
+    tokens = np.array(tokens, dtype=np.uint16)
     # label = tf.keras.utils.to_categorical(label, num_classes=MAX_INDENTATION)
     feature = {
         # 'file_name': _bytes_feature(file_name.encode('utf-8')),
@@ -98,17 +89,20 @@ def split_list(lst, val):
 def create_sub_blocks(file: Path) -> Generator[Tuple[List[int], int, int], None, None]:
     global skipped
     with open(str(file), "rb") as f:
-        tokens = list(f.read())
+        raw  = f.read()
+        tokens = []
+        for i in range(0, len(raw), 2):
+            tokens.append(int.from_bytes(raw[i:i+2], 'little'))
     lines = split_list(tokens, Tokenizer.newline_token())
     if len(lines) == 0: return
     for i in range(len(lines)-1):
-        labelpre = count_leading_spaces(lines[i])
-        labelpost = count_leading_spaces(lines[i+1])
+        labelpre = Tokenizer.count_leading_spaces(lines[i])
+        labelpost = Tokenizer.count_leading_spaces(lines[i+1])
         if labelpre >= MAX_INDENTATION or labelpost >= MAX_INDENTATION:
             skipped += 1
             continue
         new_spaces = get_random_leading_spaces()
-        core = [Tokenizer.pre_token(), *[Tokenizer.space_token()] * new_spaces, *lines[i][labelpre:], Tokenizer.post_token()]
+        core = [Tokenizer.pre_token(), *Tokenizer.get_space_tokens(new_spaces), *lines[i][labelpre:], Tokenizer.post_token()]
         if len(core) > MAX_TOKENS:
             continue
         # Roughly the max offset if each line is just a newline, and we're at the start or end of a file
